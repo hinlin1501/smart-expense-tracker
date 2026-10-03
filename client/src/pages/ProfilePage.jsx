@@ -1,84 +1,88 @@
-import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { Link } from 'react-router-dom';
-import axiosClient from '../services/axiosClient';
+import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { EMAIL_RE, STRONG_RE, useAuth } from "@/context/AuthContext";
+import { changePassword, updateProfile } from "@/services/authService";
+const Alert = ({ m }) => m?.text ? <p role={m.type === "error" ? "alert" : "status"} className={m.type === "error" ? "mt-4 rounded-lg bg-peach px-4 py-3 text-sm font-medium text-clay" : "mt-4 rounded-lg bg-sage px-4 py-3 text-sm font-medium text-primary"}>{m.text}</p> : null;
+function ProfilePage() {
+  const { user, updateUser } = useAuth();
+  useEffect(() => { document.title = "Tài khoản | Sổ Mây"; }, []);
 
-export default function ProfilePage() {
-  const { user, setUser } = useAuth();
-  
-  const [fullName, setFullName] = useState(user?.full_name || '');
-  const [email, setEmail] = useState(user?.email || '');
-  
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
+  const [name, setName] = useState(user?.full_name ?? "");
+  const [email, setEmail] = useState(user?.email ?? "");
+  const [profileBusy, setProfileBusy] = useState(false);
+  const [profileMsg, setProfileMsg] = useState(null);
 
-  const [msgProfile, setMsgProfile] = useState('');
-  const [msgPass, setMsgPass] = useState('');
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [passBusy, setPassBusy] = useState(false);
+  const [passMsg, setPassMsg] = useState(null);
 
-  const handleUpdateProfile = async (e) => {
+  const submitProfile = async (e) => {
     e.preventDefault();
-    setMsgProfile('');
+    setProfileMsg(null);
+    const fullName = name.trim();
+    const mail = email.trim();
+    if (!fullName || !mail) {
+      setProfileMsg({ type: "error", text: "Vui lòng nhập đầy đủ các trường bắt buộc." });
+      return;
+    }
+    if (fullName.length > 100) {
+      setProfileMsg({ type: "error", text: "Họ tên tối đa 100 ký tự." });
+      return;
+    }
+    if (!EMAIL_RE.test(mail)) {
+      setProfileMsg({ type: "error", text: "Email không đúng định dạng." });
+      return;
+    }
+    setProfileBusy(true);
     try {
-      const res = await axiosClient.post('/auth/profile', { full_name: fullName, email });
-      setUser(res.data.user);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-      setMsgProfile('Information updated successfully!');
+      const data = await updateProfile({ full_name: fullName, email: mail });
+      updateUser(data.user);
+      setProfileMsg({ type: "success", text: "Đã cập nhật thông tin cá nhân." });
     } catch (err) {
-      setMsgProfile(typeof err === 'string' ? err : 'Update failed');
+      setProfileMsg({ type: "error", text: err.message });
+    } finally {
+      setProfileBusy(false);
     }
   };
 
-  const handleChangePassword = async (e) => {
+  const submitPassword = async (e) => {
     e.preventDefault();
-    setMsgPass('');
+    setPassMsg(null);
+    if (!current || !next || !confirm) {
+      setPassMsg({ type: "error", text: "Vui lòng nhập đầy đủ các trường bắt buộc." });
+      return;
+    }
+    if (!STRONG_RE.test(next)) {
+      setPassMsg({ type: "error", text: "Mật khẩu mới tối thiểu 8 ký tự, gồm cả chữ và số." });
+      return;
+    }
+    if (next !== confirm) {
+      setPassMsg({ type: "error", text: "Mật khẩu mới và xác nhận mật khẩu không khớp." });
+      return;
+    }
+    if (next === current) {
+      setPassMsg({ type: "error", text: "Mật khẩu mới phải khác mật khẩu hiện tại." });
+      return;
+    }
+    setPassBusy(true);
     try {
-      const res = await axiosClient.post('/auth/change-password', { currentPassword, newPassword });
-      setMsgPass(res.data.message);
-      setCurrentPassword('');
-      setNewPassword('');
+      await changePassword(current, next);
+      setPassMsg({ type: "success", text: "Đổi mật khẩu thành công." });
+      setCurrent("");
+      setNext("");
+      setConfirm("");
     } catch (err) {
-      setMsgPass(typeof err === 'string' ? err : 'Password change failed');
+      setPassMsg({ type: "error", text: err.message });
+    } finally {
+      setPassBusy(false);
     }
   };
 
-  return (
-    <div style={{ padding: '20px' }}>
-      <Link to="/dashboard">← Quay lại Dashboard</Link>
-      <h2>Hồ Sơ Cá Nhân</h2>
-
-      {/* Form Cập nhật thông tin */}
-      <div style={{ border: '1px solid #ccc', padding: '15px', maxWidth: '400px', marginBottom: '20px' }}>
-        <h4>Thông tin cá nhân</h4>
-        {msgProfile && <p style={{ color: 'blue' }}>{msgProfile}</p>}
-        <form onSubmit={handleUpdateProfile}>
-          <div style={{ marginBottom: '10px' }}>
-            <label>Họ tên: </label>
-            <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>Email: </label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          </div>
-          <button type="submit">Lưu thông tin</button>
-        </form>
-      </div>
-
-      {/* Form Đổi mật khẩu */}
-      <div style={{ border: '1px solid #ccc', padding: '15px', maxWidth: '400px' }}>
-        <h4>Đổi mật khẩu</h4>
-        {msgPass && <p style={{ color: 'blue' }}>{msgPass}</p>}
-        <form onSubmit={handleChangePassword}>
-          <div style={{ marginBottom: '10px' }}>
-            <label>MK hiện tại: </label>
-            <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required />
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>MK mới: </label>
-            <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
-          </div>
-          <button type="submit">Đổi mật khẩu</button>
-        </form>
-      </div>
-    </div>
-  );
+  return <div className="min-h-screen bg-background text-foreground"><header className="sticky top-0 z-20 flex h-18 items-center border-b border-border bg-background/90 px-5 backdrop-blur lg:px-10"><Button variant="ghost" asChild><Link to="/"><ArrowLeft />Về tổng quan</Link></Button></header><main className="mx-auto max-w-2xl space-y-6 p-5 lg:p-10"><div className="mb-2"><p className="mb-2 text-xs font-bold uppercase tracking-widest text-primary">● Tài khoản</p><h1 className="font-display text-4xl font-semibold sm:text-5xl">Hồ sơ cá nhân</h1><p className="mt-2 text-muted-foreground">Quản lý thông tin và bảo mật tài khoản của bạn.</p></div><section className="panel"><div className="panel-head"><div><h2>Thông tin cá nhân</h2><p>Họ tên và email dùng để đăng nhập</p></div></div><form onSubmit={submitProfile} noValidate><label className="field mt-0">Họ tên<input type="text" autoComplete="name" maxLength={100} value={name} onChange={(e) => setName(e.target.value)} /></label><label className="field">Email<input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} /></label><Alert m={profileMsg} /><div className="mt-6 flex justify-end"><Button type="submit" disabled={profileBusy}>{profileBusy ? "Đang lưu…" : "Lưu thông tin"}</Button></div></form></section><section className="panel"><div className="panel-head"><div><h2>Đổi mật khẩu</h2><p>Nhập mật khẩu hiện tại để xác nhận</p></div></div><form onSubmit={submitPassword} noValidate><label className="field mt-0">Mật khẩu hiện tại<input type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} /></label><label className="field">Mật khẩu mới<input type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} placeholder="Tối thiểu 8 ký tự, gồm chữ và số" /></label><label className="field">Xác nhận mật khẩu mới<input type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} /></label><Alert m={passMsg} /><div className="mt-6 flex justify-end"><Button type="submit" disabled={passBusy}>{passBusy ? "Đang xử lý…" : "Đổi mật khẩu"}</Button></div></form></section></main></div>;
 }
+
+export default ProfilePage;

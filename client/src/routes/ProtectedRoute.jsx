@@ -1,17 +1,9 @@
-import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { Navigate, Outlet } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
+// Chưa đăng nhập (hoặc vừa đăng xuất / token hết hạn) thì chuyển về trang Đăng nhập.
 export default function ProtectedRoute() {
-  const { isAuthenticated, loading } = useAuth();
-
-  if (loading) {
-    return <div className="p-4 text-center">Loading...</div>;
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/dang-nhap" replace />;
   return <Outlet />;
 }

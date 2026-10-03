@@ -1,44 +1,46 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
-import ProtectedRoute from './routes/ProtectedRoute';
-import PublicRoute from './routes/PublicRoute';
+import { Link, Route, Routes } from "react-router-dom";
+import ProtectedRoute from "./routes/ProtectedRoute.jsx";
+import DashboardPage from "./pages/DashboardPage.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
+import RegisterPage from "./pages/RegisterPage.jsx";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
+import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
+import ProfilePage from "./pages/ProfilePage.jsx";
 
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import ResetPasswordPage from './pages/ResetPasswordPage';
-
-import DashboardPage from './pages/DashboardPage';
-import ExpensesPage from './pages/ExpensesPage';
-import CategoriesPage from './pages/CategoriesPage';
-import ProfilePage from './pages/ProfilePage';
+function NotFound() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="max-w-md text-center">
+        <h1 className="text-7xl font-bold text-foreground">404</h1>
+        <h2 className="mt-4 text-xl font-semibold text-foreground">Không tìm thấy trang</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Trang bạn tìm không tồn tại hoặc đã được chuyển đi.
+        </p>
+        <div className="mt-6">
+          <Link
+            to="/"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            Về trang chủ
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Public Routes (Chỉ cho phép khi CHƯA đăng nhập) */}
-          <Route element={<PublicRoute />}>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-          </Route>
-
-          {/* Protected Routes (Yêu cầu ĐĂNG NHẬP) */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/expenses" element={<ExpensesPage />} />
-            <Route path="/categories" element={<CategoriesPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-          </Route>
-
-          {/* Fallback Route */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+    <Routes>
+      <Route element={<ProtectedRoute />}>
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="/tai-khoan" element={<ProfilePage />} />
+      </Route>
+      <Route path="/dang-nhap" element={<LoginPage />} />
+      <Route path="/dang-ky" element={<RegisterPage />} />
+      <Route path="/quen-mat-khau" element={<ForgotPasswordPage />} />
+      <Route path="/dat-lai-mat-khau" element={<ResetPasswordPage />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 }
