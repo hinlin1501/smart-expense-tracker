@@ -109,6 +109,8 @@ const getExpenses = async (req, res) => {
       limit = 10,
       start_date,
       end_date,
+      month,
+      year,
       category_id,
       search,
     } = req.query;

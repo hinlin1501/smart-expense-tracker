@@ -19,6 +19,7 @@ model users {
   categories            categories[]
   password_reset_tokens password_reset_tokens[]
   expenses expenses[]
+  incomes Incomes[]
 }
 
 model password_reset_tokens {
@@ -44,6 +45,7 @@ model categories {
   color      String?  @db.VarChar(20)
   user       users?   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   expenses expenses[]
+  incomes Incomes[]
 }
 
 
@@ -59,4 +61,18 @@ model expenses {
 
   user         users      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   category     categories @relation(fields: [category_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+}
+
+model Incomes {
+  id          Int      @id @default(autoincrement())
+  user_id     Int
+  category_id Int
+  amount      Decimal  @db.Decimal(12, 2)
+  income_date DateTime
+  note        String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  user     users      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  category categories @relation(fields: [category_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
 }

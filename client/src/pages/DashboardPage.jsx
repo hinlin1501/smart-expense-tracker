@@ -29,6 +29,11 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { TransactionsSection } from "@/components/TransactionsSection";
 import { CategoriesSection } from "@/components/CategoriesSection";
+
+import { getDashboardSummary } from "@/services/dashboardService";
+import { getIncomes } from "@/services/incomeService";
+import { getExpenses } from "@/services/expenseService";
+
 const initialTransactions = [];
 const nav = [
   ["overview", "Tổng quan", LayoutDashboard],
@@ -53,12 +58,76 @@ function DashboardPage() {
   const fullName = user?.full_name ?? "";
   useEffect(() => { document.title = "Tổng quan tài chính | Sổ Mây"; }, []);
   const [section, setSection] = useState("overview");
-  const [transactions, setTransactions] = useState(initialTransactions);
   const [mobileNav, setMobileNav] = useState(false);
   const [toast, setToast] = useState("");
   const [pendingAdd, setPendingAdd] = useState(null); // "income" | "expense" | null
-  const income = transactions.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
-  const expense = transactions.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+  const [startDate, setStartDate] = useState(() => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+});
+const [endDate, setEndDate] = useState(() => toInputDate(new Date()));
+
+  const [summary, setSummary] = useState({ totalIncome: 0, totalExpense: 0, balance: 0 });
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+const fetchDashboardData = async (start, end) => {
+    setLoading(true);
+    try {
+      const summaryData = await getDashboardSummary({ start_date: start, end_date: end });
+      setSummary({
+        totalIncome: Number(summaryData.totalIncome || 0),
+        totalExpense: Number(summaryData.totalExpense || 0),
+        balance: Number(summaryData.balance || 0),
+      });
+
+      const [incRes, expRes] = await Promise.all([
+      getIncomes({ limit: 30, start_date: start, end_date: end }).catch(() => ({ incomes: [] })),
+      getExpenses({ limit: 30, start_date: start, end_date: end }).catch(() => ({ expenses: [] }))
+    ]);
+
+      const rawIncomes = (incRes.incomes || []).map(i => {
+        const d = new Date(i.income_date);
+        return {
+          id: `inc-${i.id}`,
+          type: "income",
+          amount: Number(i.amount),
+          title: i.note || "Thu nhập",
+          category: i.category?.name || "Khác",
+          date: fmtDate(d),
+          rawDate: d
+        };
+      });
+
+      const rawExpenses = (expRes.expenses || []).map(e => {
+        const d = new Date(e.expense_date);
+        return {
+          id: `exp-${e.id}`,
+          type: "expense",
+          amount: Number(e.amount),
+          title: e.note || "Chi tiêu",
+          category: e.category?.name || "Khác",
+          date: fmtDate(d),
+          rawDate: d
+        };
+      });
+
+      const combined = [...rawIncomes, ...rawExpenses].sort((a, b) => b.rawDate - a.rawDate);
+      setTransactions(combined);
+    } catch (err) {
+      console.error("Lỗi kết nối Dashboard API:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+  if ((section === "overview" || section === "reports") && startDate && endDate) {
+    if (startDate <= endDate) {
+      fetchDashboardData(startDate, endDate);
+    }
+  }
+}, [section, startDate, endDate]);
   const notify = (text) => {
     setToast(text);
     window.setTimeout(() => setToast(""), 2200);
@@ -72,17 +141,112 @@ function DashboardPage() {
     setSection(kind === "income" ? "income" : "expenses");
     setPendingAdd(kind);
   };
-  return <div className="min-h-screen bg-background text-foreground"><aside className={cn("fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-sidebar p-5 transition-transform lg:translate-x-0", mobileNav ? "translate-x-0" : "-translate-x-full")}><div className="mb-10 flex items-center gap-3 px-2"><span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground"><WalletCards className="size-5" /></span><div><p className="font-display text-xl font-semibold">Sổ Mây</p><p className="text-xs text-muted-foreground">Tài chính cá nhân</p></div></div><nav className="space-y-1" aria-label="Điều hướng chính">{nav.map(([key, label, Icon]) => <Button key={key} variant="ghost" onClick={() => changeSection(key)} className={cn("w-full justify-start", section === key && "bg-sidebar-accent text-sidebar-accent-foreground")}><Icon />{label}</Button>)}</nav><div className="mt-auto border-t border-border pt-5"><div className="mb-4 flex items-center gap-3 px-2"><span className="grid size-9 place-items-center rounded-full bg-sage text-primary"><User className="size-4" /></span><div className="min-w-0"><p className="text-sm font-semibold">{fullName || "Tài khoản của bạn"}</p><p className="truncate text-xs text-muted-foreground">{email}</p></div></div><Button variant="ghost" className="w-full justify-start" asChild><Link to="/tai-khoan"><Settings />Cài đặt</Link></Button><Button variant="ghost" className="w-full justify-start" onClick={logout}><LogOut />Đăng xuất</Button></div></aside>{mobileNav && <button aria-label="Đóng menu" onClick={() => setMobileNav(false)} className="fixed inset-0 z-30 bg-overlay lg:hidden" />}<main className="min-h-screen lg:ml-64"><header className="sticky top-0 z-20 flex h-18 items-center justify-between border-b border-border bg-background/90 px-5 backdrop-blur lg:px-10"><div className="flex items-center gap-3"><Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileNav(true)} aria-label="Mở menu"><Menu /></Button><p className="hidden text-sm capitalize text-muted-foreground sm:block">{(new Date()).toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "long" })}</p></div><div className="flex items-center gap-2"><Button variant="ghost" size="icon" aria-label="Thông báo"><Bell /></Button><Button onClick={addTransaction}><Plus />Thêm giao dịch</Button></div></header><div className="mx-auto max-w-[1500px] p-5 lg:p-10">{section === "overview" && <Overview name={fullName} income={income} expense={expense} transactions={transactions} onGo={changeSection} />}{section === "income" && <TransactionsSection key="income" kind="income" notify={notify} pendingAdd={pendingAdd === "income"} onPendingHandled={() => setPendingAdd(null)} onGoCategories={() => changeSection("categories")} />}{section === "expenses" && <TransactionsSection key="expense" kind="expense" notify={notify} pendingAdd={pendingAdd === "expense"} onPendingHandled={() => setPendingAdd(null)} onGoCategories={() => changeSection("categories")} />}{section === "categories" && <CategoriesSection notify={notify} />}{section === "budgets" && <Budgets />}{section === "reports" && <Reports income={income} expense={expense} transactions={transactions} />}</div></main>{toast && <div role="status" className="fixed bottom-6 right-6 z-50 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-lg">{toast}</div>}</div>;
+  return <div className="min-h-screen bg-background text-foreground"><aside className={cn("fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-sidebar p-5 transition-transform lg:translate-x-0", mobileNav ? "translate-x-0" : "-translate-x-full")}><div className="mb-10 flex items-center gap-3 px-2"><span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground"><WalletCards className="size-5" /></span><div><p className="font-display text-xl font-semibold">Sổ Mây</p><p className="text-xs text-muted-foreground">Tài chính cá nhân</p></div></div><nav className="space-y-1" aria-label="Điều hướng chính">{nav.map(([key, label, Icon]) => <Button key={key} variant="ghost" onClick={() => changeSection(key)} className={cn("w-full justify-start", section === key && "bg-sidebar-accent text-sidebar-accent-foreground")}><Icon />{label}</Button>)}</nav><div className="mt-auto border-t border-border pt-5"><div className="mb-4 flex items-center gap-3 px-2"><span className="grid size-9 place-items-center rounded-full bg-sage text-primary"><User className="size-4" /></span><div className="min-w-0"><p className="text-sm font-semibold">{fullName || "Tài khoản của bạn"}</p><p className="truncate text-xs text-muted-foreground">{email}</p></div></div><Button variant="ghost" className="w-full justify-start" asChild><Link to="/tai-khoan"><Settings />Cài đặt</Link></Button><Button variant="ghost" className="w-full justify-start" onClick={logout}><LogOut />Đăng xuất</Button></div></aside>{mobileNav && <button aria-label="Đóng menu" onClick={() => setMobileNav(false)} className="fixed inset-0 z-30 bg-overlay lg:hidden" />}<main className="min-h-screen lg:ml-64"><header className="sticky top-0 z-20 flex h-18 items-center justify-between border-b border-border bg-background/90 px-5 backdrop-blur lg:px-10"><div className="flex items-center gap-3"><Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileNav(true)} aria-label="Mở menu"><Menu /></Button><p className="hidden text-sm capitalize text-muted-foreground sm:block">{(new Date()).toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "long" })}</p></div><div className="flex items-center gap-2"><Button variant="ghost" size="icon" aria-label="Thông báo"><Bell /></Button><Button onClick={addTransaction}><Plus />Thêm giao dịch</Button></div></header><div className="mx-auto max-w-[1500px] p-5 lg:p-10">
+      {section === "overview" && (
+  <Overview
+    name={fullName}
+    income={summary.totalIncome}
+    expense={summary.totalExpense}
+    balance={summary.balance}
+    transactions={transactions}
+    loading={loading}
+    startDate={startDate}
+    endDate={endDate}
+    onStartDateChange={setStartDate}
+    onEndDateChange={setEndDate}
+    onGo={changeSection}
+  />
+)}
+          {section === "income" && <TransactionsSection key="income" kind="income" notify={notify} pendingAdd={pendingAdd === "income"} onPendingHandled={() => setPendingAdd(null)} onGoCategories={() => changeSection("categories")} />}
+          {section === "expenses" && <TransactionsSection key="expense" kind="expense" notify={notify} pendingAdd={pendingAdd === "expense"} onPendingHandled={() => setPendingAdd(null)} onGoCategories={() => changeSection("categories")} />}
+          {section === "categories" && <CategoriesSection notify={notify} />}
+          {section === "budgets" && <Budgets />}
+          {section === "reports" && <Reports income={summary.totalIncome} expense={summary.totalExpense} transactions={transactions} />}
+        </div>
+      </main>
+
+      {toast && <div role="status" className="fixed bottom-6 right-6 z-50 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-lg">{toast}</div>}
+    </div>
+  
 }
+
 function PageTitle({ title, text }) {
   return <div className="mb-8"><p className="mb-2 text-xs font-bold uppercase tracking-widest text-primary"></p><h1 className="font-display text-4xl font-semibold sm:text-5xl">{title}</h1><p className="mt-2 text-muted-foreground">{text}</p></div>;
 }
-function Overview({ name, income, expense, transactions, onGo }) {
-  const balance = income - expense;
-  const now = new Date();
+
+
+function Overview({ name, income, expense, balance, transactions, loading, startDate, endDate, onStartDateChange, onEndDateChange, onGo }) {
   const incomeCount = transactions.filter((t) => t.type === "income").length;
-  const expenseCount = transactions.length - incomeCount;
-  return <><div className="mb-8 flex flex-wrap items-end justify-between gap-4"><PageTitle title={name ? `Xin chào, ${name}.` : "Xin chào."} text={transactions.length ? "Đây là tình hình tài chính của bạn." : "Bạn chưa có giao dịch nào. Hãy thêm giao dịch đầu tiên để bắt đầu."} /><Button variant="outline">Tháng {now.getMonth() + 1}, {now.getFullYear()} <ChevronDown /></Button></div><section className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Stat label="Tổng thu nhập" value={money(income)} note={incomeCount ? `${incomeCount} khoản thu` : "Chưa có khoản thu nào"} tone="sage" icon={<TrendingUp />} /><Stat label="Tổng chi tiêu" value={money(expense)} note={expenseCount ? `${expenseCount} khoản chi` : "Chưa có khoản chi nào"} tone="peach" icon={<TrendingDown />} /><Stat label="Số dư hiện tại" value={money(balance)} note={!transactions.length ? "Chưa có giao dịch" : balance >= 0 ? "Bạn đang đi đúng hướng" : "Chi tiêu đang vượt thu nhập"} tone="lavender" icon={<CircleDollarSign />} /><Stat label="Ngân sách còn lại" value={money(0)} note="Chưa thiết lập ngân sách" tone="sand" icon={<PiggyBank />} /></section><section className="grid gap-6 xl:grid-cols-[1.45fr_1fr]"><div className="panel"><div className="panel-head"><div><h2>Dòng tiền 6 tháng</h2><p>Thu nhập và chi tiêu theo thời gian</p></div><span className="tag">6 tháng gần nhất</span></div><LineChart transactions={transactions} /></div><div className="panel"><div className="panel-head"><div><h2>Cơ cấu chi tiêu</h2><p>Theo từng danh mục</p></div></div><Donut transactions={transactions} /></div><div className="panel xl:col-span-2"><div className="panel-head"><div><h2>Giao dịch gần đây</h2><p>Cập nhật mới nhất</p></div><Button variant="ghost" onClick={() => onGo("expenses")}>Xem tất cả</Button></div>{transactions.length ? <TransactionTable items={transactions.slice(0, 5)} /> : <EmptyState text="Chưa có giao dịch nào." />}</div></section></>;
+  const expenseCount = transactions.filter((t) => t.type === "expense").length;
+
+  if (loading) {
+    return <p className="py-20 text-center text-muted-foreground">Đang tải dữ liệu...</p>;
+  }
+
+  return (
+    <>
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <PageTitle
+          title={name ? `Xin chào, ${name}.` : "Xin chào."}
+          text={transactions.length ? "Đây là tình hình tài chính của bạn." : "Bạn chưa có giao dịch nào. Hãy thêm giao dịch đầu tiên để bắt đầu."}
+        />
+
+        {/* Render 2 ô chọn ngày: Từ ngày - Đến ngày */}
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+            Từ
+            <input
+              type="date"
+              value={startDate}
+              max={endDate || undefined}
+              onChange={(e) => onStartDateChange(e.target.value)}
+              className="h-10 rounded-lg border border-border bg-background px-3 text-sm font-semibold text-foreground cursor-pointer shadow-sm hover:bg-accent focus:outline-none"
+            />
+          </label>
+          <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+            Đến
+            <input
+              type="date"
+              value={endDate}
+              min={startDate || undefined}
+              onChange={(e) => onEndDateChange(e.target.value)}
+              className="h-10 rounded-lg border border-border bg-background px-3 text-sm font-semibold text-foreground cursor-pointer shadow-sm hover:bg-accent focus:outline-none"
+            />
+          </label>
+        </div>
+      </div>
+
+      <section className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Stat label="Tổng thu nhập" value={money(income)} note={incomeCount ? `${incomeCount} khoản thu` : "Chưa có khoản thu nào"} tone="sage" icon={<TrendingUp />} />
+        <Stat label="Tổng chi tiêu" value={money(expense)} note={expenseCount ? `${expenseCount} khoản chi` : "Chưa có khoản chi nào"} tone="peach" icon={<TrendingDown />} />
+        <Stat label="Số dư hiện tại" value={money(balance)} note={!transactions.length ? "Chưa có giao dịch" : balance >= 0 ? "Bạn đang đi đúng hướng" : "Chi tiêu đang vượt thu nhập"} tone="lavender" icon={<CircleDollarSign />} />
+        <Stat label="Ngân sách còn lại" value={money(0)} note="Chưa thiết lập ngân sách" tone="sand" icon={<PiggyBank />} />
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[1.45fr_1fr]">
+        <div className="panel">
+          <div className="panel-head">
+            <div><h2>Dòng tiền 6 tháng</h2><p>Thu nhập và chi tiêu theo thời gian</p></div>
+            <span className="tag">6 tháng gần nhất</span>
+          </div>
+          <LineChart transactions={transactions} />
+        </div>
+        <div className="panel">
+          <div className="panel-head">
+            <div><h2>Cơ cấu chi tiêu</h2><p>Theo từng danh mục</p></div>
+          </div>
+          <Donut transactions={transactions} />
+        </div>
+        <div className="panel xl:col-span-2">
+          <div className="panel-head">
+            <div><h2>Giao dịch gần đây</h2><p>Cập nhật mới nhất</p></div>
+            <Button variant="ghost" onClick={() => onGo("expenses")}>Xem tất cả</Button>
+          </div>
+          {transactions.length ? <TransactionTable items={transactions.slice(0, 5)} /> : <EmptyState text="Chưa có giao dịch nào." />}
+        </div>
+      </section>
+    </>
+  );
 }
 function Stat({ label, value, note, tone, icon }) {
   return <article className={cn("stat", `stat-${tone}`)}><div className="flex items-center justify-between"><p>{label}</p><span>{icon}</span></div><strong>{value}</strong><small>{note}</small></article>;
