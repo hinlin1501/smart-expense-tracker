@@ -366,25 +366,22 @@ const changePassword = async (req, res) => {
 
 const updateProfile = async (req, res) => {
   try {
-    const { full_name, email } = req.body;
+    // 1. Chỉ nhận full_name và avatar_url từ client (không cho sửa email)
+    const { full_name, avatar_url } = req.body;
 
-    if (!full_name || !email) {
+    if (!full_name || !full_name.trim()) {
       return res.status(400).json({
-        message: "Full name and email are required",
+        message: "Full name is required",
       });
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // Đảm bảo lấy userId an toàn
+    const userId = req.user.userId || req.user.id;
 
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({
-        message: "Invalid email format",
-      });
-    }
-
+    // 2. Kiểm tra tài khoản có tồn tại không
     const user = await prisma.users.findUnique({
       where: {
-        id: req.user.userId,
+        id: userId,
       },
     });
 
@@ -394,35 +391,26 @@ const updateProfile = async (req, res) => {
       });
     }
 
-    const existingUser = await prisma.users.findUnique({
-      where: {
-        email,
-      },
-    });
-
-    if (existingUser && existingUser.id !== user.id) {
-      return res.status(409).json({
-        message: "Email is already in use",
-      });
-    }
-
+    // 3. Cập nhật full_name, avatar_url (email giữ nguyên từ DB)
     const updatedUser = await prisma.users.update({
       where: {
         id: user.id,
       },
       data: {
-        full_name,
-        email,
+        full_name: full_name.trim(),
+        avatar_url: avatar_url !== undefined ? avatar_url : user.avatar_url,
         updated_at: new Date(),
       },
     });
 
+    // 4. Trả về thông tin người dùng (email chỉ để xem, không bị sửa)
     return res.status(200).json({
       message: "Profile updated successfully",
       user: {
         id: updatedUser.id,
         full_name: updatedUser.full_name,
-        email: updatedUser.email,
+        email: updatedUser.email, // Lấy trực tiếp email từ DB ra để hiển thị (Read-only)
+        avatar_url: updatedUser.avatar_url,
         role: updatedUser.role,
       },
     });

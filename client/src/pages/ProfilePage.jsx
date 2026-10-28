@@ -33,13 +33,10 @@ function ProfilePage() {
       setProfileMsg({ type: "error", text: "Họ tên tối đa 100 ký tự." });
       return;
     }
-    if (!EMAIL_RE.test(mail)) {
-      setProfileMsg({ type: "error", text: "Email không đúng định dạng." });
-      return;
-    }
+   
     setProfileBusy(true);
     try {
-      const data = await updateProfile({ full_name: fullName, email: mail });
+      const data = await updateProfile({ full_name: fullName});
       updateUser(data.user);
       setProfileMsg({ type: "success", text: "Đã cập nhật thông tin cá nhân." });
     } catch (err) {

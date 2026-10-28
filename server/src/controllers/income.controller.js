@@ -6,7 +6,7 @@ exports.createIncome = async (req, res) => {
   try {
     const { amount, category_id, income_date, note } = req.body;
     
-    // Sửa req.user.id thành req.user.userId ở đây:
+   
     const userId = req.user.userId; 
 
     if (!amount || Number(amount) <= 0) {
@@ -15,7 +15,7 @@ exports.createIncome = async (req, res) => {
 
     const income = await prisma.incomes.create({
       data: {
-        user_id: userId, // Lúc này userId sẽ có giá trị số nguyên hợp lệ
+        user_id: userId, 
         category_id: Number(category_id),
         amount: parseFloat(amount),
         income_date: new Date(income_date),
@@ -74,7 +74,6 @@ exports.updateIncome = async (req, res) => {
     const userId = req.user.id;
     const { amount, category_id, income_date, note } = req.body;
 
-    // Đảm bảo chỉ được sửa thu nhập của chính mình (BR-05)
     const income = await prisma.incomes.updateMany({
       where: { id: incomeId, user_id: userId },
       data: {
