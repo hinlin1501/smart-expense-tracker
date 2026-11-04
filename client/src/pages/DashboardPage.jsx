@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { TransactionsSection } from "@/components/TransactionsSection";
 import { CategoriesSection } from "@/components/CategoriesSection";
+import { BudgetsSection } from "@/components/BudgetsSection";
 
 import { getDashboardSummary } from "@/services/dashboardService";
 import { getIncomes } from "@/services/incomeService";
@@ -128,9 +129,12 @@ const fetchDashboardData = async (start, end) => {
     }
   }
 }, [section, startDate, endDate]);
+  const toastTimer = useRef(null);
   const notify = (text) => {
     setToast(text);
-    window.setTimeout(() => setToast(""), 2200);
+    window.clearTimeout(toastTimer.current);
+    // Thông báo dài (kèm cảnh báo ngân sách) hiển thị lâu hơn để kịp đọc
+    toastTimer.current = window.setTimeout(() => setToast(""), text.length > 45 ? 5500 : 2200);
   };
   const changeSection = (next) => {
     setSection(next);
@@ -160,7 +164,7 @@ const fetchDashboardData = async (start, end) => {
           {section === "income" && <TransactionsSection key="income" kind="income" notify={notify} pendingAdd={pendingAdd === "income"} onPendingHandled={() => setPendingAdd(null)} onGoCategories={() => changeSection("categories")} />}
           {section === "expenses" && <TransactionsSection key="expense" kind="expense" notify={notify} pendingAdd={pendingAdd === "expense"} onPendingHandled={() => setPendingAdd(null)} onGoCategories={() => changeSection("categories")} />}
           {section === "categories" && <CategoriesSection notify={notify} />}
-          {section === "budgets" && <Budgets />}
+          {section === "budgets" && <BudgetsSection notify={notify} onGoCategories={() => changeSection("categories")} />}
           {section === "reports" && <Reports income={summary.totalIncome} expense={summary.totalExpense} transactions={transactions} />}
         </div>
       </main>
@@ -300,9 +304,6 @@ function Categories({ transactions }) {
   const tones = ["sage", "sand", "lavender", "peach", "clay"];
   const cats = [...counts.entries()];
   return <><div className="flex flex-wrap items-end justify-between gap-4"><PageTitle eyebrow="Phân loại dòng tiền" title="Danh mục" text="Sắp xếp giao dịch để bạn luôn biết tiền đi đâu." /><Button><Plus />Thêm danh mục</Button></div>{cats.length ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{cats.map(([name, count], i) => <article className="category-card" key={name}><span className={cn("category-mark", `bg-${tones[i % tones.length]}`)}><FolderKanban /></span><div className="min-w-0 flex-1"><h3>{name}</h3><p>{count} giao dịch</p></div><Button variant="ghost" size="icon-sm"><Pencil /></Button></article>)}</div> : <div className="panel"><EmptyState text="Chưa có danh mục nào. Danh mục sẽ xuất hiện khi bạn thêm giao dịch." /></div>}</>;
-}
-function Budgets() {
-  return <><div className="flex flex-wrap items-end justify-between gap-4"><PageTitle eyebrow="Kế hoạch chi tiêu" title="Ngân sách" text="Giữ chi tiêu trong tầm kiểm soát bằng các giới hạn rõ ràng." /><Button><Plus />Tạo ngân sách</Button></div><div className="panel"><EmptyState text="Bạn chưa tạo ngân sách nào." /></div></>;
 }
 function Reports({ income, expense, transactions }) {
   const rate = income > 0 ? Math.round((income - expense) / income * 100) : 0;

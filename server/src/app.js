@@ -2,8 +2,9 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const expenseRoutes = require("./routes/expense.routes");
-const incomeRoutes = require('./routes/income.routes'); 
-const dashboardRoutes = require('./routes/dashboard.routes');
+const incomeRoutes = require("./routes/income.routes");
+const dashboardRoutes = require("./routes/dashboard.routes");
+const budgetRoutes = require("./routes/budget.routes");
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use('/api/incomes', incomeRoutes); 
 app.use('/api/dashboard', dashboardRoutes);
+app.use("/api/budgets", budgetRoutes);
 
 app.get("/", (req, res) => {
   res.json({
@@ -26,7 +28,6 @@ app.get("/", (req, res) => {
   });
 });
 
-app.use("/api/auth", authRoutes);
 
 const PORT = process.env.PORT || 3000;
 

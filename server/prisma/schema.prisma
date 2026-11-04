@@ -20,6 +20,7 @@ model users {
   password_reset_tokens password_reset_tokens[]
   expenses expenses[]
   incomes Incomes[]
+  budgets               budgets[]
 }
 
 model password_reset_tokens {
@@ -46,6 +47,7 @@ model categories {
   user       users?   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   expenses expenses[]
   incomes Incomes[]
+  budgets    budgets[]
 }
 
 
@@ -75,4 +77,19 @@ model Incomes {
 
   user     users      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   category categories @relation(fields: [category_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+}
+
+model budgets {
+  id          Int      @id @default(autoincrement())
+  user_id     Int
+  category_id Int
+  amount      Decimal  @db.Decimal(15, 2)
+  start_date  DateTime @db.Date
+  end_date    DateTime @db.Date
+  created_at  DateTime @default(now()) @db.Timestamp(6)
+
+  user     users      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  category categories @relation(fields: [category_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@map("budgets")
 }
