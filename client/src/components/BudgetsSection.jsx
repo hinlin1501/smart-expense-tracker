@@ -215,7 +215,7 @@ export function BudgetsSection({ notify, onGoCategories }) {
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <PageTitle title="Ngân sách" text="Giữ chi tiêu trong tầm kiểm soát bằng các giới hạn rõ ràng." />
-        <Button onClick={() => setForm({ initial: null })}><Plus />Tạo ngân sách</Button>
+        <Button className="mb-8" onClick={() => setForm({ initial: null })}><Plus />Tạo ngân sách</Button>
       </div>
 
       {loading ? (
