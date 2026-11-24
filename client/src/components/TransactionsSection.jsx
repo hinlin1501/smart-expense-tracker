@@ -19,6 +19,7 @@ const KINDS = {
   expense: {
     title: "Chi tiêu", noun: "khoản chi tiêu", listKey: "expenses", dateField: "expense_date",
     dateLabel: "Ngày chi tiêu", dateRequired: "Vui lòng chọn ngày chi tiêu.",
+    noFutureDate: true,
     categoryLabel: "Danh mục", categoryHeader: "Danh mục", allCategories: "Tất cả danh mục",
     sign: "−", amountClass: "", notePlaceholder: "Ví dụ: Đi chợ cuối tuần",
     formEyebrow: "Giao dịch mới", addTitle: "Thêm chi tiêu", editTitle: "Sửa chi tiêu", saveText: "Lưu chi tiêu",
@@ -56,6 +57,9 @@ function TransactionForm({ cfg, categories, initial, onClose, onSaved, onGoCateg
     if (value > MAX_AMOUNT) return setError("Số tiền quá lớn.");
     if (!categoryId) return setError("Vui lòng chọn danh mục.");
     if (!date) return setError(cfg.dateRequired);
+    if (cfg.noFutureDate && date > todayInput()) {
+      return setError("Ngày chi tiêu không được lớn hơn ngày hiện tại.");
+    }
     const body = { amount: value, category_id: Number(categoryId), [cfg.dateField]: date, note: note.trim() };
     setBusy(true);
     try {

@@ -12,6 +12,14 @@ function isValidExpenseDate(value) {
   );
 }
 
+function getTodayDateString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 /**
  * US-29: Tính mức sử dụng ngân sách sau khi chi tiêu thay đổi.
  * Chỉ trả về các ngân sách có mức sử dụng từ 80% trở lên.
@@ -165,6 +173,11 @@ const createExpense = async (req, res) => {
     message: "Invalid expense date. Use YYYY-MM-DD format.",
   });
 }
+if (expense_date > getTodayDateString()) {
+      return res.status(400).json({
+        message: "Expense date cannot be in the future.",
+      });
+    }
 
 const expenseDate = new Date(`${expense_date}T00:00:00`);
 
@@ -480,6 +493,11 @@ const updateExpense = async (req, res) => {
     message: "Invalid expense date. Use YYYY-MM-DD format.",
   });
 }
+if (expense_date > getTodayDateString()) {
+      return res.status(400).json({
+        message: "Expense date cannot be in the future.",
+      });
+    }
 
 const expenseDate = new Date(`${expense_date}T00:00:00`);
 

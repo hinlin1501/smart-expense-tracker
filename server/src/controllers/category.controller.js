@@ -4,6 +4,44 @@ const prisma = require("../lib/prisma");
 // Helper functions
 // ================================
 
+const DEFAULT_CATEGORIES = [
+  { name: "Ăn uống", icon: "utensils", color: "#d98a5f" },
+  { name: "Di chuyển", icon: "car", color: "#3f7c8a" },
+  { name: "Mua sắm", icon: "shopping-bag", color: "#8b6fb0" },
+  { name: "Hóa đơn", icon: "receipt", color: "#7c6b3e" },
+  { name: "Giải trí", icon: "gamepad", color: "#a35c7a" },
+  { name: "Sức khỏe", icon: "heart-pulse", color: "#c4553f" },
+  { name: "Giáo dục", icon: "graduation-cap", color: "#4a6b4d" },
+  { name: "Khác", icon: "tag", color: "#6b7a8f" },
+];
+
+async function ensureDefaultCategories() {
+  const existingDefaults = await prisma.categories.findMany({
+    where: {
+      user_id: null,
+      is_default: true,
+    },
+    select: { name: true },
+  });
+
+  if (existingDefaults.length >= DEFAULT_CATEGORIES.length) return;
+
+  const existingNames = new Set(existingDefaults.map((c) => c.name));
+  const missing = DEFAULT_CATEGORIES.filter((c) => !existingNames.has(c.name));
+
+  if (missing.length > 0) {
+    await prisma.categories.createMany({
+      data: missing.map((c) => ({
+        name: c.name,
+        icon: c.icon,
+        color: c.color,
+        user_id: null,
+        is_default: true,
+      })),
+    });
+  }
+}
+
 // Validate positive integer
 function parsePositiveInt(value) {
   const number = Number(value);
@@ -62,6 +100,7 @@ function validateOptionalFields(icon, color) {
   return { valid: true };
 }
 
+
 // Check whether a category name already exists
 async function isCategoryNameTaken(name, userId, excludeId = null) {
   const existingCategory = await prisma.categories.findFirst({
@@ -103,6 +142,7 @@ const getCategories = async (req, res) => {
         message: "Unauthorized",
       });
     }
+    await ensureDefaultCategories();
 
     const categories = await prisma.categories.findMany({
       where: {
