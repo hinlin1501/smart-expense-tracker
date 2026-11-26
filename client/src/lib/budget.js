@@ -20,3 +20,9 @@ export function alertInfo(usage) {
   }
   return { level: "none", message: "" };
 }
+
+// US-29: POST /expenses trả `budget_alerts` ({ status, spent_amount, budget_amount, usage_percentage, ... }).
+// Alert của backend không kèm tên danh mục nên truyền vào từ danh sách danh mục đang chọn.
+export function alertFromExpense(alert, categoryName) {
+  return alertInfo({ ...alert, alert: alert.status, category_name: categoryName });
+}

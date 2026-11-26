@@ -21,6 +21,22 @@ const KNOWN = {
   "Invalid income ID": "Khoản thu nhập không hợp lệ.",
   "Income date is required": "Vui lòng chọn ngày nhận.",
   "Invalid income date": "Ngày nhận không hợp lệ.",
+  // Chi tiêu (backend mới)
+  "Expense date cannot be in the future.": "Ngày chi tiêu không được lớn hơn ngày hiện tại.",
+  "Invalid expense date. Use YYYY-MM-DD format.": "Ngày chi tiêu không hợp lệ.",
+  "Invalid start date. Use YYYY-MM-DD format.": "Ngày bắt đầu không hợp lệ.",
+  "Invalid end date. Use YYYY-MM-DD format.": "Ngày kết thúc không hợp lệ.",
+  "Start date must not be after end date": "Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.",
+  // Danh mục (backend mới)
+  "Cannot delete category because it is being used": "Không thể xóa danh mục vì đang được sử dụng (giao dịch hoặc ngân sách).",
+  // Ngân sách (US-25 → US-28)
+  "Amount must be greater than zero": "Số tiền ngân sách phải lớn hơn 0.",
+  "category_id and a positive amount are required": "Vui lòng chọn danh mục và nhập số tiền ngân sách lớn hơn 0.",
+  "Invalid start_date or end_date": "Khoảng thời gian áp dụng không hợp lệ.",
+  "Category does not exist or is not accessible": "Danh mục không hợp lệ.",
+  "A budget already overlaps this period for the category": "Danh mục này đã có ngân sách trong khoảng thời gian trùng với khoảng bạn chọn.",
+  "Budget not found": "Không tìm thấy ngân sách (có thể đã bị xóa).",
+  "Invalid budget ID": "Ngân sách không hợp lệ.",
 };
 
 export function toApiMessage(err) {
