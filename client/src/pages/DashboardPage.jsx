@@ -45,7 +45,7 @@ const nav = [
   ["expenses", "Chi tiêu", ArrowUpRight],
   ["categories", "Danh mục", FolderKanban],
   ["budgets", "Ngân sách", PiggyBank],
-  ["reports", "Báo cáo", BarChart3]
+  ["reports", "Thống kê", BarChart3]
 ];
 const fmtShort = (v) => v >= 1e6 ? `${(v / 1e6).toFixed(1).replace(/\.0$/, "").replace(".", ",")}tr` : v >= 1e3 ? `${Math.round(v / 1e3)}k` : String(Math.round(v));
 const toInputDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -346,7 +346,7 @@ function Reports({ income, expense, balance, transactions, loading, startDate, e
   const dateInput = "h-10 rounded-lg border border-border bg-background px-3 text-sm font-semibold text-foreground shadow-sm focus:outline-none";
   return <>
     <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-      <PageTitle title="Báo cáo" text="Nhìn lại thói quen để đưa ra quyết định tốt hơn." />
+      <PageTitle title="Thống kê" text="Nhìn lại thói quen để đưa ra quyết định tốt hơn." />
       <div className="flex flex-col items-end gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">Từ<DateInput value={startDate} max={endDate || undefined} onChange={(e) => onStartDateChange(e.target.value)} className={dateInput} /></label>
