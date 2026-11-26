@@ -13,11 +13,8 @@ function isValidExpenseDate(value) {
 }
 
 function getTodayDateString() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  const vnTime = new Date(Date.now() + 7 * 60 * 60 * 1000);
+  return vnTime.toISOString().slice(0, 10);
 }
 
 /**
