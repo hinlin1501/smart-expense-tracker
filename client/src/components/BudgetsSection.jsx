@@ -5,9 +5,10 @@ import { PageTitle } from "@/components/PageTitle";
 import { CategoryMark } from "@/components/CategoryMark";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { alertInfo, formatPercent } from "@/lib/budget";
-import { fmtDateOnly, money, toDateOnly } from "@/lib/format";
+import { fmtDateOnly, formatAmountInput, money, parseAmountInput, toDateOnly } from "@/lib/format";
 import { getCategories } from "@/services/categoryService";
 import { createBudget, deleteBudget, getBudgets, getBudgetUsage, updateBudget } from "@/services/budgetService";
+import { DateInput } from "@/components/DateInput";
 
 const pad = (n) => String(n).padStart(2, "0");
 const inputDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -28,7 +29,7 @@ function BudgetForm({ categories, initial, onClose, onSaved, onGoCategories }) {
   const editing = !!initial;
   const month = currentMonth();
   const [categoryId, setCategoryId] = useState(initial ? String(initial.category_id) : "");
-  const [amount, setAmount] = useState(initial ? String(Number(initial.amount)) : "");
+  const [amount, setAmount] = useState(initial ? formatAmountInput(Math.round(Number(initial.amount))) : "");
   const [start, setStart] = useState(initial ? toDateOnly(initial.start_date) : month.start);
   const [end, setEnd] = useState(initial ? toDateOnly(initial.end_date) : month.end);
   const [busy, setBusy] = useState(false);
@@ -37,7 +38,7 @@ function BudgetForm({ categories, initial, onClose, onSaved, onGoCategories }) {
   const submit = async (e) => {
     e.preventDefault();
     setError("");
-    const value = Number(amount);
+    const value = parseAmountInput(amount);
     if (!editing && !categoryId) return setError("Vui lòng chọn danh mục áp dụng.");
     if (!amount) return setError("Vui lòng nhập số tiền ngân sách.");
     if (!Number.isFinite(value) || value <= 0) return setError("Số tiền ngân sách phải lớn hơn 0.");
@@ -87,17 +88,17 @@ function BudgetForm({ categories, initial, onClose, onSaved, onGoCategories }) {
 
         <label className="field">
           Số tiền ngân sách (₫)
-          <input type="number" inputMode="decimal" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" autoFocus={editing} />
+          <input type="text" inputMode="numeric" autoComplete="off" value={amount} onChange={(e) => setAmount(formatAmountInput(e.target.value))} placeholder="0" autoFocus={editing} />
         </label>
 
         <div className="grid gap-x-3 sm:grid-cols-2">
           <label className="field">
             Từ ngày
-            <input type="date" value={start} max={end || undefined} onChange={(e) => setStart(e.target.value)} />
+            <DateInput value={start} max={end || undefined} onChange={(e) => setStart(e.target.value)} />
           </label>
           <label className="field">
             Đến ngày
-            <input type="date" value={end} min={start || undefined} onChange={(e) => setEnd(e.target.value)} />
+            <DateInput value={end} min={start || undefined} onChange={(e) => setEnd(e.target.value)} />
           </label>
         </div>
 

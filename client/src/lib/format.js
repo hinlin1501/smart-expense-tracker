@@ -13,3 +13,23 @@ export const todayInput = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
+
+// Ô nhập số tiền: "1500000" -> "1.500.000" (chỉ giữ chữ số, thêm dấu chấm phân cách hàng nghìn)
+export const formatAmountInput = (value) => {
+  const digits = String(value ?? "").replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+};
+
+// "1.500.000" -> 1500000
+export const parseAmountInput = (value) => Number(String(value ?? "").replace(/\./g, ""));
+
+const pad2 = (n) => String(n).padStart(2, "0");
+
+// Date -> "26/11/2026"
+export const fmtDate = (d) => `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+
+// Date | ISO string -> "26/11/2026 15:42"
+export const fmtDateTime = (v) => {
+  const d = new Date(v);
+  return `${fmtDate(d)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+};

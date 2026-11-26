@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import {
   ArrowDownLeft,
   ArrowUpRight,
   BarChart3,
-  Bell,
   ChevronDown,
   CircleDollarSign,
   CreditCard,
   FolderKanban,
   LayoutDashboard,
+  Leaf,
   LogOut,
   Menu,
   Pencil,
@@ -21,7 +21,6 @@ import {
   Trash2,
   TrendingDown,
   TrendingUp,
-  User,
   WalletCards,
   X
 } from "lucide-react";
@@ -30,10 +29,14 @@ import { cn } from "@/lib/utils";
 import { TransactionsSection } from "@/components/TransactionsSection";
 import { CategoriesSection } from "@/components/CategoriesSection";
 import { BudgetsSection } from "@/components/BudgetsSection";
+import { ReportTrend } from "@/components/ReportTrend";
+import { ReportExport } from "@/components/ReportExport";
 
 import { getDashboardSummary } from "@/services/dashboardService";
 import { getIncomes } from "@/services/incomeService";
 import { getExpenses } from "@/services/expenseService";
+import { fmtDate } from "@/lib/format";
+import { DateInput } from "@/components/DateInput";
 
 const initialTransactions = [];
 const nav = [
@@ -45,7 +48,6 @@ const nav = [
   ["reports", "Báo cáo", BarChart3]
 ];
 const fmtShort = (v) => v >= 1e6 ? `${(v / 1e6).toFixed(1).replace(/\.0$/, "").replace(".", ",")}tr` : v >= 1e3 ? `${Math.round(v / 1e3)}k` : String(Math.round(v));
-const fmtDate = (d) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 const toInputDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const parseDate = (s) => {
   const [d, m, y] = s.split("/").map(Number);
@@ -53,6 +55,39 @@ const parseDate = (s) => {
 };
 const EmptyState = ({ text }) => <p className="py-14 text-center text-muted-foreground">{text}</p>;
 const money = (value) => new Intl.NumberFormat("vi-VN").format(value) + " ₫";
+const UserMenu = ({ fullName, email, onLogout }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
+  }, [open]);
+  const name = fullName || "Tài khoản của bạn";
+  const item = "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted";
+  const go = (fn) => () => { setOpen(false); fn(); };
+  return <div className="relative" ref={ref}>
+    <button type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)} className="flex items-center gap-2 rounded-full p-1 pr-2 transition-colors hover:bg-muted">
+      <span className="grid size-9 place-items-center rounded-full bg-sage text-primary"><Leaf className="size-4" /></span>
+      <span className="hidden font-display text-base font-semibold sm:block">{name}</span>
+      <ChevronDown className={cn("size-4 text-muted-foreground transition-transform", open && "rotate-180")} />
+    </button>
+    {open && <div role="menu" className="absolute right-0 top-full z-50 mt-3 w-64 rounded-2xl border border-border bg-card p-2 shadow-xl">
+      <div className="flex items-center gap-3 px-3 py-3">
+        <span className="grid size-12 shrink-0 place-items-center rounded-full bg-sage text-primary"><Leaf className="size-5" /></span>
+        <div className="min-w-0"><p className="truncate font-display text-base font-semibold">{name}</p><p className="truncate text-xs text-muted-foreground">{email}</p></div>
+      </div>
+      <div className="my-1 border-t border-border" />
+      <button role="menuitem" className={item} onClick={go(() => navigate("/tai-khoan"))}><Settings className="size-[18px] text-muted-foreground" />Cài đặt</button>
+      <div className="my-1 border-t border-border" />
+      <button role="menuitem" className={cn(item, "text-destructive hover:bg-peach")} onClick={go(onLogout)}><LogOut className="size-[18px]" />Đăng xuất</button>
+    </div>}
+  </div>;
+};
 function DashboardPage() {
   const { user, logout } = useAuth();
   const email = user?.email ?? "";
@@ -145,7 +180,8 @@ const fetchDashboardData = async (start, end) => {
     setSection(kind === "income" ? "income" : "expenses");
     setPendingAdd(kind);
   };
-  return <div className="min-h-screen bg-background text-foreground"><aside className={cn("fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-sidebar p-5 transition-transform lg:translate-x-0", mobileNav ? "translate-x-0" : "-translate-x-full")}><div className="mb-10 flex items-center gap-3 px-2"><span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground"><WalletCards className="size-5" /></span><div><p className="font-display text-xl font-semibold">Sổ Mây</p><p className="text-xs text-muted-foreground">Tài chính cá nhân</p></div></div><nav className="space-y-1" aria-label="Điều hướng chính">{nav.map(([key, label, Icon]) => <Button key={key} variant="ghost" onClick={() => changeSection(key)} className={cn("w-full justify-start", section === key && "bg-sidebar-accent text-sidebar-accent-foreground")}><Icon />{label}</Button>)}</nav><div className="mt-auto border-t border-border pt-5"><div className="mb-4 flex items-center gap-3 px-2"><span className="grid size-9 place-items-center rounded-full bg-sage text-primary"><User className="size-4" /></span><div className="min-w-0"><p className="text-sm font-semibold">{fullName || "Tài khoản của bạn"}</p><p className="truncate text-xs text-muted-foreground">{email}</p></div></div><Button variant="ghost" className="w-full justify-start" asChild><Link to="/tai-khoan"><Settings />Cài đặt</Link></Button><Button variant="ghost" className="w-full justify-start" onClick={logout}><LogOut />Đăng xuất</Button></div></aside>{mobileNav && <button aria-label="Đóng menu" onClick={() => setMobileNav(false)} className="fixed inset-0 z-30 bg-overlay lg:hidden" />}<main className="min-h-screen lg:ml-64"><header className="sticky top-0 z-20 flex h-18 items-center justify-between border-b border-border bg-background/90 px-5 backdrop-blur lg:px-10"><div className="flex items-center gap-3"><Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileNav(true)} aria-label="Mở menu"><Menu /></Button><p className="hidden text-sm capitalize text-muted-foreground sm:block">{(new Date()).toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "long" })}</p></div><div className="flex items-center gap-2"><Button variant="ghost" size="icon" aria-label="Thông báo"><Bell /></Button><Button onClick={addTransaction}><Plus />Thêm giao dịch</Button></div></header><div className="mx-auto max-w-[1500px] p-5 lg:p-10">
+  return <div className="min-h-screen bg-background text-foreground"><aside className={cn("fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-sidebar p-5 transition-transform lg:translate-x-0", mobileNav ? "translate-x-0" : "-translate-x-full")}><div className="mb-10 flex items-center gap-3 px-2"><span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground"><WalletCards className="size-5" /></span><div><p className="font-display text-xl font-semibold">Sổ Mây</p><p className="text-xs text-muted-foreground">Tài chính cá nhân</p></div></div><nav className="space-y-1" aria-label="Điều hướng chính">{nav.map(([key, label, Icon]) => <Button key={key} variant="ghost" onClick={() => changeSection(key)} className={cn("w-full justify-start", section === key && "bg-sidebar-accent text-sidebar-accent-foreground")}><Icon />{label}</Button>)}</nav></aside>{mobileNav && <button aria-label="Đóng menu" onClick={() => setMobileNav(false)} className="fixed inset-0 z-30 bg-overlay lg:hidden" />}<main className="min-h-screen lg:ml-64"><header className="sticky top-0 z-20 flex h-18 items-center justify-between border-b border-border bg-background/90 px-5 backdrop-blur lg:px-10"><div className="flex items-center gap-3"><Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileNav(true)} aria-label="Mở menu"><Menu /></Button><p className="hidden text-sm capitalize text-muted-foreground sm:block">{(new Date()).toLocaleDateString("vi-VN", { weekday: "long" })}, {fmtDate(new Date())}</p></div><div className="flex items-center gap-2"><div className="ml-2 border-l border-border pl-4"><UserMenu fullName={fullName} email={email} onLogout={logout} /></div></div>
+</header><div className="mx-auto max-w-[1500px] p-5 lg:p-10">
       {section === "overview" && (
   <Overview
     name={fullName}
@@ -165,7 +201,7 @@ const fetchDashboardData = async (start, end) => {
           {section === "expenses" && <TransactionsSection key="expense" kind="expense" notify={notify} pendingAdd={pendingAdd === "expense"} onPendingHandled={() => setPendingAdd(null)} onGoCategories={() => changeSection("categories")} />}
           {section === "categories" && <CategoriesSection notify={notify} />}
           {section === "budgets" && <BudgetsSection notify={notify} onGoCategories={() => changeSection("categories")} />}
-          {section === "reports" && <Reports income={summary.totalIncome} expense={summary.totalExpense} transactions={transactions} />}
+          {section === "reports" && <Reports income={summary.totalIncome} expense={summary.totalExpense} balance={summary.balance} transactions={transactions} loading={loading} startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} notify={notify} />}
         </div>
       </main>
 
@@ -199,22 +235,20 @@ function Overview({ name, income, expense, balance, transactions, loading, start
         <div className="flex flex-wrap items-center gap-2">
           <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
             Từ
-            <input
-              type="date"
+            <DateInput
               value={startDate}
               max={endDate || undefined}
               onChange={(e) => onStartDateChange(e.target.value)}
-              className="h-10 rounded-lg border border-border bg-background px-3 text-sm font-semibold text-foreground cursor-pointer shadow-sm hover:bg-accent focus:outline-none"
+              className="h-10 rounded-lg border border-border bg-background px-3 text-sm font-semibold text-foreground shadow-sm focus:outline-none"
             />
           </label>
           <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
             Đến
-            <input
-              type="date"
+            <DateInput
               value={endDate}
               min={startDate || undefined}
               onChange={(e) => onEndDateChange(e.target.value)}
-              className="h-10 rounded-lg border border-border bg-background px-3 text-sm font-semibold text-foreground cursor-pointer shadow-sm hover:bg-accent focus:outline-none"
+              className="h-10 rounded-lg border border-border bg-background px-3 text-sm font-semibold text-foreground shadow-sm focus:outline-none"
             />
           </label>
         </div>
@@ -265,7 +299,7 @@ function LineChart({ transactions }) {
       return p.m === d.getMonth() + 1 && p.y === d.getFullYear();
     });
     return {
-      label: `Thg ${d.getMonth() + 1}`,
+      label: `${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`,
       income: inMonth.filter((t) => t.type === "income").reduce((a, t) => a + t.amount, 0),
       expense: inMonth.filter((t) => t.type === "expense").reduce((a, t) => a + t.amount, 0)
     };
@@ -305,9 +339,37 @@ function Categories({ transactions }) {
   const cats = [...counts.entries()];
   return <><div className="flex flex-wrap items-end justify-between gap-4"><PageTitle eyebrow="Phân loại dòng tiền" title="Danh mục" text="Sắp xếp giao dịch để bạn luôn biết tiền đi đâu." /><Button><Plus />Thêm danh mục</Button></div>{cats.length ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{cats.map(([name, count], i) => <article className="category-card" key={name}><span className={cn("category-mark", `bg-${tones[i % tones.length]}`)}><FolderKanban /></span><div className="min-w-0 flex-1"><h3>{name}</h3><p>{count} giao dịch</p></div><Button variant="ghost" size="icon-sm"><Pencil /></Button></article>)}</div> : <div className="panel"><EmptyState text="Chưa có danh mục nào. Danh mục sẽ xuất hiện khi bạn thêm giao dịch." /></div>}</>;
 }
-function Reports({ income, expense, transactions }) {
+function Reports({ income, expense, balance, transactions, loading, startDate, endDate, onStartDateChange, onEndDateChange, notify }) {
   const rate = income > 0 ? Math.round((income - expense) / income * 100) : 0;
-  return <><div className="flex flex-wrap items-end justify-between gap-4"><PageTitle eyebrow="Phân tích tài chính" title="Báo cáo" text="Nhìn lại thói quen để đưa ra quyết định tốt hơn." /><Button variant="outline" className="mb-8">6 tháng gần nhất <ChevronDown /></Button></div><div className="mb-6 grid gap-4 sm:grid-cols-3"><Stat label="Tổng thu" value={money(income)} note="Tất cả giao dịch" tone="sage" icon={<TrendingUp />} /><Stat label="Tổng chi" value={money(expense)} note="Tất cả giao dịch" tone="peach" icon={<TrendingDown />} /><Stat label="Tỷ lệ tiết kiệm" value={`${rate}%`} note={income > 0 ? "So với tổng thu nhập" : "Chưa có thu nhập"} tone="lavender" icon={<PiggyBank />} /></div><div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]"><div className="panel"><div className="panel-head"><div><h2>Xu hướng thu – chi</h2><p>So sánh theo từng tháng</p></div></div><LineChart transactions={transactions} /></div><div className="panel"><div className="panel-head"><div><h2>Chi tiêu theo danh mục</h2><p>Tỷ trọng các khoản chi</p></div></div><Donut transactions={transactions} /></div></div></>;
+  const invalidRange = !startDate || !endDate || startDate > endDate;
+  const empty = !transactions.length && !income && !expense;
+  const dateInput = "h-10 rounded-lg border border-border bg-background px-3 text-sm font-semibold text-foreground shadow-sm focus:outline-none";
+  return <>
+    <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+      <PageTitle title="Báo cáo" text="Nhìn lại thói quen để đưa ra quyết định tốt hơn." />
+      <div className="flex flex-col items-end gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">Từ<DateInput value={startDate} max={endDate || undefined} onChange={(e) => onStartDateChange(e.target.value)} className={dateInput} /></label>
+          <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">Đến<DateInput value={endDate} min={startDate || undefined} onChange={(e) => onEndDateChange(e.target.value)} className={dateInput} /></label>
+        </div>
+        <ReportExport startDate={startDate} endDate={endDate} disabled={invalidRange} notify={notify} />
+      </div>
+    </div>
+    {invalidRange && <p role="alert" className="mb-4 text-sm font-medium text-clay">Vui lòng chọn khoảng thời gian hợp lệ: ngày bắt đầu phải trước hoặc bằng ngày kết thúc.</p>}
+    {loading ? <p className="py-20 text-center text-muted-foreground">Đang tải dữ liệu...</p> : <>
+      {empty && !invalidRange && <p role="status" className="mb-4 text-sm text-muted-foreground">Không có dữ liệu trong khoảng thời gian đã chọn.</p>}
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Stat label="Tổng thu" value={money(income)} note="Trong khoảng đã chọn" tone="sage" icon={<TrendingUp />} />
+        <Stat label="Tổng chi" value={money(expense)} note="Trong khoảng đã chọn" tone="peach" icon={<TrendingDown />} />
+        <Stat label="Số dư" value={money(balance)} note={balance >= 0 ? "Thu nhập trừ chi tiêu" : "Chi tiêu đang vượt thu nhập"} tone="lavender" icon={<CircleDollarSign />} />
+        <Stat label="Tỷ lệ tiết kiệm" value={`${rate}%`} note={income > 0 ? "So với tổng thu nhập" : "Chưa có thu nhập"} tone="sand" icon={<PiggyBank />} />
+      </div>
+      <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
+        <ReportTrend />
+        <div className="panel"><div className="panel-head"><div><h2>Chi tiêu theo danh mục</h2><p>Tỷ trọng các khoản chi</p></div></div><Donut transactions={transactions} /></div>
+      </div>
+    </>}
+  </>;
 }
 
 export default DashboardPage;
